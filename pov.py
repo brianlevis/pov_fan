@@ -2,6 +2,10 @@ from __future__ import print_function
 import os
 
 characters = {
+    '.' : ['0xFF','0xFC','0xFC','0xFF','0xFF'],
+    '0' : ['0xC1','0xBA','0xB6','0xAE','0xC1'],
+    '1' : ['0xFF','0xDE','0x80','0xFE','0xFF'],
+    '2' : ['0xDE','0xBC','0xBA','0xB6','0xCE'],
     'A' : ['0xE0','0xDB','0xBB','0xDB','0xE0'],
     'B' : ['0xF9','0xC6','0xB6','0xB6','0x80'],
     'C' : ['0xDD','0xBE','0xBE','0xDD','0xE3'],
@@ -27,12 +31,12 @@ characters = {
     'W' : ['0x80','0xFD','0xFB','0xFD','0x80'],
     'X' : ['0xBE','0xDD','0xE3','0xDD','0xBE'],
     'Y' : ['0x8F','0xEF','0xE0','0xEF','0x8F'],
-    'Z' : ['0x9E','0xAE','0xB6','0xBA','0xBC'],				    
+    'Z' : ['0x9E','0xAE','0xB6','0xBA','0xBC'],
     ' ' : ['0xFF','0xFF','0xFF','0xFF','0xFF'],
 }
 
 header = """\
-//This sketch was created using the pov.py module to 
+//This sketch was created using the pov.py module to
 //fill the I2C EEPROM on the POV fan
 //
 //LED on Pin 13 blinks once data transfer is complete
@@ -50,11 +54,11 @@ header = """\
 void setup()
 {
   Wire.begin();        // join i2c bus (address optional for master)
-  pinMode(13, OUTPUT);    
+  pinMode(13, OUTPUT);
 }
 
 void loop()
-{ 
+{
 """
 
 footer = """\
@@ -69,42 +73,42 @@ footer = """\
 }
 """
 
-class POV():    
+class POV():
     """
     :param screens: Screen contents
     :type screens: list of strings
     :param name: Folder/File name for Arduino sketch
     :type name: string
-    """        
+    """
     def __init__(self, screens, name='pov_sketch'):
         self.screens = screens
-        self.name = name     
+        self.name = name
         self.check_inputs()
-        
+
         self.address_counter = 0
         self.i2c_address = '0x50'
-        
+
         if not os.path.isdir(name):
             os.mkdir(name)
-        
+
         self.sketch = open(name + '/' + name + '.ino', 'w')
         self.sketch.write(header)
         self.sketch.write('  Wire.beginTransmission(' + str(self.i2c_address) +  ');\n')
         self.sketch.write('  Wire.write(' + str(self.address_counter) + ');\n')
         self.sketch.write('  Wire.write(' + str(len(screens)) + ');\n')
         self.increment_address()
-        
+
         for screen in self.screens:
             self.write_screen(screen)
-        
+
         self.sketch.write(footer)
         self.sketch.close()
 
     def check_inputs(self):
         #Convert all characters to uppercase
         for idx,screen in enumerate(self.screens):
-            self.screens[idx] = screen.upper()        
-        
+            self.screens[idx] = screen.upper()
+
         #Drop screens with invalid characters
         for screen in self.screens:
             try:
@@ -114,20 +118,20 @@ class POV():
                 print('Bad character: ' + letter)
                 print('\tDropping screen: ' + screen)
                 self.screens.remove(screen)
-        
+
         #Drop screens with too many characters
         for screen in self.screens:
             if len(screen) > 20:
                 print('Max number of letters is 20')
                 print('\tDropping screen: ' + screen)
                 self.screens.remove(screen)
-        
+
         #Drop screens if too many provided
         if len(self.screens) > 6:
             print('Max number of screens is 6')
             while len(self.screens) > 6:
                 print('\tDropping screen: ' + self.screens.pop())
-        
+
         print('Valid Screens:')
         print(self.screens)
 
@@ -138,14 +142,14 @@ class POV():
         if self.address_counter >= 511:
             print('Error: Too much data...shorten messages')
             raise(Exception)
-    
+
     def check_page_break(self):
         if self.address_counter % 16 == 0:
             self.sketch.write('  Wire.endTransmission();\n')
             self.sketch.write('  delay(500);\n')
             self.sketch.write('  Wire.beginTransmission(' + str(self.i2c_address) + ');\n')
             self.sketch.write('  Wire.write(' + str(self.address_counter % 256) + ');\n')
-    
+
     def write_screen(self, screen):
         self.sketch.write('  // ' + '#'*20  + screen + '#'*20  +  '\n')
         self.sketch.write('  Wire.write(' + str(len(screen)) + ');\n')
